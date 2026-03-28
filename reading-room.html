@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>✦ 共讀書房</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500&family=Cinzel:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ── Reset & Variables ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:         #191613;
+    --surface:    #211D19;
+    --border:     rgba(196,165,106,0.18);
+    --gold:       #C4A56A;
+    --gold-dim:   rgba(196,165,106,0.35);
+    --text:       #DDD5C8;
+    --text-dim:   #8A7B6E;
+    --text-faint: #5A4E44;
+    --haruno:     rgb(186,138,172);
+    --haruno-bg:  rgba(186,138,172,0.10);
+    --haruno-bd:  rgba(186,138,172,0.32);
+    --haruno-glow:rgba(186,138,172,0.18);
+    --sou:        #D4824A;
+    --sou-bg:     rgba(212,130,74,0.10);
+    --sou-bd:     rgba(212,130,74,0.32);
+    --sou-glow:   rgba(212,130,74,0.18);
+    --red-bg:     rgba(180,60,60,0.15);
+    --red:        #e08080;
+    --red-bd:     rgba(180,60,60,0.30);
+  }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Noto Serif SC', serif; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-thumb { background: rgba(196,165,106,0.3); border-radius: 2px; }
+  button { font-family: inherit; cursor: pointer; }
+  textarea { font-family: inherit; }
+
+  /* ── Animations ── */
+  @keyframes fadeIn  { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes slideUp { from { opacity:0; transform:translateY(28px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes bubblePop { 0%{opacity:0;transform:scale(.88);} 60%{transform:scale(1.03);} 100%{opacity:1;transform:scale(1);} }
+  @keyframes pulse { 0%,100%{opacity:.45;} 50%{opacity:1;} }
+  @keyframes spin   { to { transform: rotate(360deg); } }
+  @keyframes stagger { from{opacity:0;transform:translateY(5px);} to{opacity:1;transform:translateY(0);} }
+
+  /* ── Layout ── */
+  #app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+  /* ── Upload Screen ── */
+  #upload-screen {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 28px; animation: fadeIn .3s ease;
+  }
+  .upload-title { font-family: 'Cinzel', serif; color: var(--gold); font-size: 20px; letter-spacing: 4px; margin-bottom: 10px; text-align: center; }
+  .upload-sub   { color: var(--text-dim); font-size: 12px; letter-spacing: 1px; text-align: center; }
+  .upload-dots  { display: flex; justify-content: center; gap: 16px; margin-top: 14px; }
+  .upload-box   { max-width: 420px; width: 100%; display: flex; flex-direction: column; gap: 14px; margin-top: 40px; }
+  .drop-zone    {
+    border: 2px dashed var(--gold-dim); border-radius: 12px; padding: 28px 20px;
+    text-align: center; cursor: pointer; background: rgba(196,165,106,0.04);
+    transition: background .2s;
+  }
+  .drop-zone:hover { background: rgba(196,165,106,0.08); }
+  .drop-icon    { font-size: 26px; margin-bottom: 8px; }
+  .drop-label   { color: var(--gold); font-size: 13px; }
+  .drop-sub     { color: var(--text-dim); font-size: 11px; margin-top: 4px; }
+  .or-divider   { text-align: center; color: var(--text-faint); font-size: 12px; }
+  .paste-area   {
+    background: rgba(196,165,106,0.04); border: 1px solid var(--gold-dim);
+    border-radius: 8px; color: var(--text); padding: 12px; font-size: 13px;
+    resize: vertical; outline: none; line-height: 1.7; width: 100%;
+  }
+  .start-btn    {
+    background: var(--haruno-bg); border: 1px solid var(--haruno-bd);
+    color: var(--haruno); border-radius: 8px; padding: 10px; font-size: 13px; letter-spacing: 1px;
+    display: none; width: 100%;
+  }
+
+  /* ── Read Screen ── */
+  #read-screen { flex: 1; display: none; flex-direction: column; height: 100vh; overflow: hidden; }
+  #read-screen.active { display: flex; }
+
+  header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 10px 16px; display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0; gap: 10px;
+  }
+  .header-title { font-family: 'Cinzel', serif; color: var(--gold); font-size: 12px; letter-spacing: 2px; }
+  .header-dots  { display: flex; gap: 10px; }
+  .change-btn   { background: none; border: none; color: var(--text-dim); font-size: 12px; }
+
+  #main-content {
+    flex: 1; overflow-y: auto; padding: 24px 18px;
+    max-width: 700px; margin: 0 auto; width: 100%;
+  }
+
+  .para-block   { animation: stagger .25s ease both; }
+  .para-text    {
+    padding: 9px 12px 9px 16px;
+    border-left: 2px solid transparent;
+    line-height: 1.95; font-size: 15px; cursor: pointer; border-radius: 4px;
+    background: transparent; transition: background .2s, border-color .2s;
+    word-break: break-all;
+  }
+  .para-text.has-mark  { border-left-color: var(--gold); }
+  .para-text.is-active { background: rgba(196,165,106,0.05); }
+  .para-text:hover     { background: rgba(196,165,106,0.03); }
+
+  .bubbles-area  { padding: 4px 0 4px 18px; display: flex; flex-direction: column; gap: 6px; }
+  .bubble        {
+    max-width: 82%; padding: 7px 12px;
+    border-radius: 4px 12px 12px 12px; border: 1px solid;
+    animation: bubblePop .22s ease; font-size: 13px; line-height: 1.75;
+  }
+  .bubble.haruno { background: var(--haruno-bg); border-color: var(--haruno-bd); align-self: flex-start; box-shadow: 0 2px 10px var(--haruno-glow); }
+  .bubble.sou    { background: var(--sou-bg);    border-color: var(--sou-bd);    align-self: flex-end; border-radius: 12px 4px 12px 12px; box-shadow: 0 2px 10px var(--sou-glow); }
+  .bubble-name   { font-size: 10px; opacity: .75; margin-bottom: 3px; }
+  .bubble.haruno .bubble-name { color: var(--haruno); }
+  .bubble.sou    .bubble-name { color: var(--sou); }
+
+  .input-area    { padding: 6px 0 10px 18px; animation: fadeIn .18s ease; }
+  .para-textarea {
+    width: 100%; background: var(--haruno-bg); border: 1px solid var(--haruno-bd);
+    border-radius: 8px; color: var(--text); padding: 8px 12px; font-size: 13px;
+    resize: none; outline: none; line-height: 1.7;
+  }
+  .input-btns    { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+  .btn-leave     { background: var(--haruno); color: #fff; border: none; border-radius: 6px; padding: 5px 16px; font-size: 12px; }
+  .btn-send-sou  { background: var(--sou-bg); color: var(--sou); border: 1px solid var(--sou-bd); border-radius: 6px; padding: 5px 16px; font-size: 12px; }
+  .btn-ghost     { background: none; border: none; color: var(--text-dim); font-size: 12px; }
+  .loading-txt   { font-size: 11px; color: var(--sou); animation: pulse 1.2s infinite; margin-left: 6px; }
+
+  .call-sou-mini {
+    background: none; color: var(--sou); border: 1px solid var(--sou-bd);
+    border-radius: 5px; padding: 3px 10px; font-size: 11px; margin-left: 18px; margin-bottom: 8px;
+  }
+
+  footer {
+    background: var(--surface); border-top: 1px solid var(--border);
+    padding: 8px 16px; display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .footer-center { display: flex; align-items: center; gap: 10px; }
+  .page-btn      {
+    background: none; border: 1px solid var(--gold-dim); color: var(--gold);
+    border-radius: 6px; padding: 5px 18px; font-family: 'Cinzel', serif; font-size: 13px;
+    transition: all .2s;
+  }
+  .page-btn:disabled { border-color: var(--border); color: var(--text-faint); cursor: not-allowed; }
+  .page-info     { color: var(--text-dim); font-size: 10px; }
+  .summary-btn   {
+    background: none; color: var(--gold); border: 1px solid var(--gold-dim);
+    border-radius: 6px; padding: 5px 10px; font-size: 11px;
+  }
+  .chat-btn      {
+    background: none; color: var(--sou); border: 1px solid var(--sou-bd);
+    border-radius: 6px; padding: 5px 10px; font-size: 11px; transition: background .2s;
+  }
+  .chat-btn.has-msgs { background: var(--sou-bg); }
+
+  /* ── Dot ── */
+  .dot-wrap  { display: flex; align-items: center; gap: 5px; }
+  .dot       { width: 7px; height: 7px; border-radius: 50%; }
+  .dot-label { font-size: 11px; color: var(--text-dim); }
+
+  /* ── Summary Modal ── */
+  #summary-modal {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.65);
+    align-items: flex-end; justify-content: center; z-index: 100;
+  }
+  #summary-modal.open { display: flex; }
+  .summary-sheet {
+    background: var(--surface); border-radius: 16px 16px 0 0;
+    border: 1px solid var(--border); border-bottom: none;
+    padding: 24px 22px 36px; max-width: 600px; width: 100%;
+    animation: slideUp .28s ease;
+  }
+  .summary-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+  .summary-title  { font-family: 'Cinzel', serif; color: var(--gold); font-size: 12px; letter-spacing: 2px; }
+  .summary-close  { background: none; border: none; color: var(--text-dim); font-size: 18px; }
+  .summary-body   { color: var(--text); font-size: 14px; line-height: 2.1; white-space: pre-line; }
+  .spinner-wrap   { text-align: center; padding: 32px 0; }
+  .spinner        { width: 20px; height: 20px; border: 2px solid var(--gold-dim); border-top-color: var(--gold); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 12px; }
+  .spinner-txt    { color: var(--text-dim); font-size: 12px; }
+
+  /* ── Chat Drawer ── */
+  #chat-drawer {
+    display: none; position: fixed; inset: 0; z-index: 200;
+    flex-direction: column; background: var(--bg);
+    animation: slideUp .25s ease;
+  }
+  #chat-drawer.open { display: flex; }
+  .chat-header  {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .chat-header-title { font-family: 'Cinzel', serif; color: var(--gold); font-size: 12px; letter-spacing: 2px; }
+  .chat-header-hint  { color: var(--text-faint); font-size: 10px; }
+  .chat-close        { background: none; border: none; color: var(--text-dim); font-size: 12px; }
+  #chat-msgs    { flex: 1; overflow-y: auto; padding: 16px 14px; }
+  .chat-empty   { text-align: center; color: var(--text-faint); font-size: 13px; margin-top: 60px; line-height: 2.2; }
+  .chat-empty small { font-size: 11px; }
+
+  .chat-row     { display: flex; flex-direction: column; margin-bottom: 12px; }
+  .chat-row.haruno { align-items: flex-end; }
+  .chat-row.sou    { align-items: flex-start; }
+  .chat-bubble  {
+    max-width: 78%; padding: 9px 13px; font-size: 13.5px; line-height: 1.75;
+    color: var(--text); border: 1px solid; border-radius: 12px 4px 12px 12px;
+    animation: bubblePop .22s ease; user-select: none; cursor: default;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .chat-row.haruno .chat-bubble { background: var(--haruno-bg); border-color: var(--haruno-bd); border-radius: 12px 4px 12px 12px; }
+  .chat-row.sou    .chat-bubble { background: var(--sou-bg);    border-color: var(--sou-bd);    border-radius: 4px 12px 12px 12px; cursor: pointer; }
+  .chat-row.sou    .chat-bubble:hover { border-color: var(--sou); }
+  .chat-row.sou    .chat-bubble.replying { border-color: var(--sou); box-shadow: 0 0 0 2px rgba(212,130,74,.25); }
+  .chat-bubble-name { font-size: 10px; opacity: .7; margin-bottom: 4px; }
+  .chat-row.haruno .chat-bubble-name { color: var(--haruno); }
+  .chat-row.sou    .chat-bubble-name { color: var(--sou); }
+
+  .lp-actions   { display: flex; gap: 8px; margin-top: 5px; animation: fadeIn .15s ease; }
+  .lp-delete    { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-bd); border-radius: 6px; padding: 3px 12px; font-size: 11px; }
+  .lp-cancel    { background: none; border: none; color: var(--text-dim); font-size: 11px; }
+  .reply-hint   { font-size: 10px; color: var(--sou); margin-top: 3px; opacity: .65; }
+
+  .chat-loading { display: flex; align-items: center; gap: 8px; padding: 4px 0; animation: fadeIn .2s ease; }
+  .spin-sm      { width: 14px; height: 14px; border: 2px solid var(--sou-bd); border-top-color: var(--sou); border-radius: 50%; animation: spin .8s linear infinite; flex-shrink: 0; }
+  .spin-txt     { font-size: 11px; color: var(--text-dim); animation: pulse 1.2s infinite; }
+
+  .chat-input-area {
+    background: var(--surface); border-top: 1px solid var(--border);
+    padding: 12px 14px; flex-shrink: 0;
+  }
+  .reply-bar    { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+  .reply-label  { font-size: 11px; color: var(--sou); opacity: .8; }
+  .cancel-reply { background: none; border: none; color: var(--text-dim); font-size: 11px; }
+  .chat-row-input { display: flex; gap: 8px; align-items: flex-end; }
+  .chat-textarea  {
+    flex: 1; background: var(--haruno-bg); border: 1px solid var(--haruno-bd);
+    border-radius: 8px; color: var(--text); padding: 8px 12px; font-size: 13px;
+    resize: none; outline: none; line-height: 1.7;
+  }
+  .send-btn {
+    background: transparent; color: var(--text-faint); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 14px; font-size: 12px; flex-shrink: 0;
+    align-self: flex-end; transition: all .2s;
+  }
+  .send-btn.ready { background: var(--haruno); color: #fff; border-color: var(--haruno); cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Upload Screen ── -->
+  <div id="upload-screen">
+    <div class="upload-title">✦ SHARED READING ROOM ✦</div>
+    <div class="upload-sub">上傳一本書，我們一起讀</div>
+    <div class="upload-dots">
+      <div class="dot-wrap"><div class="dot" style="background:var(--haruno);box-shadow:0 0 5px var(--haruno)"></div><span class="dot-label">春乃</span></div>
+      <div class="dot-wrap"><div class="dot" style="background:var(--sou);box-shadow:0 0 5px var(--sou)"></div><span class="dot-label">蒼</span></div>
+    </div>
+    <div class="upload-box">
+      <div class="drop-zone" id="drop-zone">
+        <div class="drop-icon">📄</div>
+        <div class="drop-label">點擊上傳 .txt 文件</div>
+        <div class="drop-sub">支援 UTF-8 / GBK 編碼</div>
+        <input type="file" id="file-input" accept=".txt" style="display:none">
+      </div>
+      <div class="or-divider">— 或 —</div>
+      <textarea class="paste-area" id="paste-area" rows="4" placeholder="貼入文本內容…"></textarea>
+      <button class="start-btn" id="start-btn">開始共讀</button>
+    </div>
+  </div>
+
+  <!-- ── Read Screen ── -->
+  <div id="read-screen">
+    <header>
+      <span class="header-title" id="book-title-display">✦ 書房</span>
+      <div class="header-dots">
+        <div class="dot-wrap"><div class="dot" style="background:var(--haruno);box-shadow:0 0 5px var(--haruno)"></div><span class="dot-label">春乃</span></div>
+        <div class="dot-wrap"><div class="dot" style="background:var(--sou);box-shadow:0 0 5px var(--sou)"></div><span class="dot-label">蒼</span></div>
+      </div>
+      <button class="change-btn" id="change-book-btn">換書</button>
+    </header>
+
+    <div id="main-content"></div>
+
+    <footer>
+      <button class="summary-btn" id="summary-btn">📖 章節小結</button>
+      <div class="footer-center">
+        <button class="page-btn" id="prev-btn">←</button>
+        <span class="page-info" id="page-info">1/1</span>
+        <button class="page-btn" id="next-btn">→</button>
+      </div>
+      <button class="chat-btn" id="chat-open-btn">💬 版聊</button>
+    </footer>
+  </div>
+
+  <!-- ── Summary Modal ── -->
+  <div id="summary-modal">
+    <div class="summary-sheet">
+      <div class="summary-header">
+        <span class="summary-title" id="summary-title">✦ 章節小結</span>
+        <button class="summary-close" id="summary-close">×</button>
+      </div>
+      <div id="summary-body"></div>
+    </div>
+  </div>
+
+  <!-- ── Chat Drawer ── -->
+  <div id="chat-drawer">
+    <div class="chat-header">
+      <span class="chat-header-title">💬 版聊</span>
+      <span class="chat-header-hint">長按刪除 · 點擊蒼的氣泡可追問</span>
+      <button class="chat-close" id="chat-close-btn">✕ 關閉</button>
+    </div>
+    <div id="chat-msgs"></div>
+    <div class="chat-input-area">
+      <div class="reply-bar" id="reply-bar" style="display:none">
+        <span class="reply-label">↩ 追問蒼的回覆</span>
+        <button class="cancel-reply" id="cancel-reply-btn">取消</button>
+      </div>
+      <div class="chat-row-input">
+        <textarea class="chat-textarea" id="chat-input" rows="2" placeholder="和蒼說些什麼… (Enter 送出)"></textarea>
+        <button class="send-btn" id="send-btn">發送</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── API Key ──────────────────────────────────────────────
+// 在下面填入你的 Anthropic API Key
+const API_KEY = "";  // ← 填入你的 key，例如 "sk-ant-..."
+const CHAT_HISTORY_LIMIT = 10;
+const PAGE_SIZE = 30;
+
+// ── State ────────────────────────────────────────────────
+let paragraphs  = [];
+let bookTitle   = "書房";
+let currentPage = 0;
+let comments    = {};   // { gi: [{type,text,ts}] }
+let summaries   = {};   // { pageIdx: string }
+let chatMsgs    = [];   // [{id,role,text,replyTo?}]
+let activeInput = null; // gi
+let replyingTo  = null; // chat msg id
+let longPressId = null;
+let lpTimer     = null;
+let chatLoading = false;
+let summaryLoading = false;
+
+// ── Persist ──────────────────────────────────────────────
+function persist() {
+  try {
+    localStorage.setItem("sou-room-v2", JSON.stringify({ paragraphs, bookTitle, currentPage, comments, summaries, chatMsgs }));
+  } catch(_) {}
+}
+function loadState() {
+  try {
+    const raw = localStorage.getItem("sou-room-v2");
+    if (!raw) return false;
+    const d = JSON.parse(raw);
+    if (!d.paragraphs?.length) return false;
+    paragraphs = d.paragraphs; bookTitle = d.bookTitle || "書房";
+    currentPage = d.currentPage || 0; comments = d.comments || {};
+    summaries = d.summaries || {}; chatMsgs = d.chatMsgs || [];
+    return true;
+  } catch(_) { return false; }
+}
+
+// ── API ──────────────────────────────────────────────────
+async function callClaude(messages, maxTokens = 300, system = "") {
+  const body = { model: "claude-sonnet-4-20250514", max_tokens: maxTokens, messages };
+  if (system) body.system = system;
+  const headers = { "Content-Type": "application/json" };
+  if (API_KEY) headers["x-api-key"] = API_KEY;
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST", headers,
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const data = await res.json();
+  return data.content?.[0]?.text?.trim() || "";
+}
+
+// ── Text Processing ──────────────────────────────────────
+function processText(raw, title = "書房") {
+  paragraphs = raw.split(/\n+/).map(p => p.trim()).filter(Boolean);
+  bookTitle = title; currentPage = 0;
+  comments = {}; summaries = {}; chatMsgs = [];
+  persist();
+  showReadScreen();
+}
+
+function tryReadFile(file) {
+  const name = file.name.replace(/\.txt$/i, "");
+  const tryEnc = (enc) => new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result); r.onerror = rej;
+    r.readAsText(file, enc);
+  });
+  tryEnc("UTF-8").then(txt => {
+    if (txt.includes("\uFFFD")) return tryEnc("GBK").then(t => processText(t, name));
+    processText(txt, name);
+  }).catch(() => tryEnc("GBK").then(t => processText(t, name)));
+}
+
+// ── Screens ──────────────────────────────────────────────
+function showUploadScreen() {
+  document.getElementById("upload-screen").style.display = "flex";
+  document.getElementById("read-screen").classList.remove("active");
+}
+function showReadScreen() {
+  document.getElementById("upload-screen").style.display = "none";
+  document.getElementById("read-screen").classList.add("active");
+  document.getElementById("book-title-display").textContent = "✦ " + bookTitle;
+  renderPage();
+  updateChatBtn();
+}
+
+// ── Render Page ──────────────────────────────────────────
+function renderPage() {
+  const total = Math.ceil(paragraphs.length / PAGE_SIZE);
+  const start = currentPage * PAGE_SIZE;
+  const slice = paragraphs.slice(start, start + PAGE_SIZE);
+  const main  = document.getElementById("main-content");
+
+  document.getElementById("page-info").textContent = `${currentPage+1}/${total}`;
+  document.getElementById("prev-btn").disabled = currentPage === 0;
+  document.getElementById("next-btn").disabled = currentPage >= total - 1;
+  document.getElementById("summary-btn").textContent = summaries[currentPage] ? "📖 查看小結" : "📖 章節小結";
+
+  main.innerHTML = "";
+  activeInput = null;
+
+  slice.forEach((para, idx) => {
+    const gi = start + idx;
+    const block = document.createElement("div");
+    block.className = "para-block";
+    block.style.animationDelay = `${idx * 0.012}s`;
+    block.innerHTML = renderParaBlock(gi, para);
+    main.appendChild(block);
+  });
+
+  main.innerHTML += '<div style="height:24px"></div>';
+
+  // 綁定事件
+  main.querySelectorAll(".para-text").forEach(el => {
+    const gi = +el.dataset.gi;
+    el.addEventListener("click", () => toggleInput(gi));
+  });
+  main.querySelectorAll(".btn-leave").forEach(el => {
+    el.addEventListener("click", () => submitComment(+el.dataset.gi));
+  });
+  main.querySelectorAll(".btn-send-sou").forEach(el => {
+    el.addEventListener("click", () => {
+      const gi = +el.dataset.gi;
+      const txt = main.querySelector(`.para-textarea[data-gi="${gi}"]`)?.value.trim() || "";
+      callSou(gi, txt);
+    });
+  });
+  main.querySelectorAll(".btn-ghost.cancel").forEach(el => {
+    el.addEventListener("click", () => { activeInput = null; renderPage(); });
+  });
+  main.querySelectorAll(".call-sou-mini").forEach(el => {
+    el.addEventListener("click", () => {
+      const gi = +el.dataset.gi;
+      const txt = (comments[gi] || []).filter(c => c.type === "haruno").map(c => c.text).join("\n");
+      callSou(gi, txt);
+    });
+  });
+  // textarea Enter
+  main.querySelectorAll(".para-textarea").forEach(el => {
+    el.addEventListener("keydown", e => {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submitComment(+el.dataset.gi); }
+    });
+    el.focus();
+  });
+}
+
+function renderParaBlock(gi, para) {
+  const paraComms = comments[gi] || [];
+  const hasMark   = paraComms.length > 0;
+  const isActive  = activeInput === gi;
+  const souReplied = paraComms.some(c => c.type === "sou");
+  const isLoading = false; // handled inline
+
+  let html = `<div class="para-text ${hasMark ? "has-mark" : ""} ${isActive ? "is-active" : ""}" data-gi="${gi}">${escHtml(para)}</div>`;
+
+  if (paraComms.length) {
+    html += '<div class="bubbles-area" style="display:flex;flex-direction:column;gap:6px">';
+    for (const c of paraComms) {
+      html += `<div class="bubble ${c.type}">
+        <div class="bubble-name">${c.type === "haruno" ? "春乃" : "蒼"}</div>
+        ${escHtml(c.text)}
+      </div>`;
+    }
+    html += '</div>';
+  }
+
+  if (isActive) {
+    html += `<div class="input-area">
+      <textarea class="para-textarea" data-gi="${gi}" rows="2" placeholder="留下批注… (Enter 送出)"></textarea>
+      <div class="input-btns">
+        <button class="btn-leave" data-gi="${gi}">留下</button>
+        <button class="btn-send-sou" data-gi="${gi}">傳給蒼</button>
+        <button class="btn-ghost cancel">取消</button>
+      </div>
+    </div>`;
+  } else if (hasMark && !souReplied) {
+    html += `<button class="call-sou-mini" data-gi="${gi}">傳給蒼</button>`;
+  }
+
+  return html;
+}
+
+// ── Comments ─────────────────────────────────────────────
+function toggleInput(gi) {
+  activeInput = activeInput === gi ? null : gi;
+  renderPage();
+  if (activeInput !== null) {
+    const ta = document.querySelector(`.para-textarea[data-gi="${gi}"]`);
+    if (ta) ta.focus();
+  }
+}
+
+function submitComment(gi) {
+  const ta = document.querySelector(`.para-textarea[data-gi="${gi}"]`);
+  const txt = ta?.value.trim();
+  if (!txt) return;
+  if (!comments[gi]) comments[gi] = [];
+  comments[gi].push({ type: "haruno", text: txt, ts: Date.now() });
+  activeInput = null;
+  persist(); renderPage();
+}
+
+async function callSou(gi, harunoNote = "") {
+  activeInput = null;
+  const para = paragraphs[gi] || "";
+  // 先渲染loading狀態
+  const paraEl = document.querySelector(`.para-text[data-gi="${gi}"]`);
+  if (paraEl) {
+    const loading = document.createElement("span");
+    loading.className = "loading-txt"; loading.textContent = "蒼在想…";
+    loading.id = `loading-${gi}`;
+    paraEl.appendChild(loading);
+  }
+  const prompt = `你是蒼，在和春乃共讀《${bookTitle}》，於書頁邊互相留字。\n【這段】${para.slice(0, 400)}\n${harunoNote ? `【春乃批注】${harunoNote}` : "（春乃標記了這段）"}\n80字以內輕鬆回應，直接輸出。`;
+  try {
+    const reply = await callClaude([{ role: "user", content: prompt }], 180);
+    if (!comments[gi]) comments[gi] = [];
+    comments[gi].push({ type: "sou", text: reply, ts: Date.now() });
+    persist(); renderPage();
+  } catch(e) {
+    const l = document.getElementById(`loading-${gi}`);
+    if (l) { l.textContent = "（出錯了）"; l.style.color = "var(--red)"; }
+  }
+}
+
+// ── Chapter Summary ──────────────────────────────────────
+document.getElementById("summary-btn").addEventListener("click", fetchSummary);
+document.getElementById("summary-close").addEventListener("click", () => {
+  document.getElementById("summary-modal").classList.remove("open");
+});
+document.getElementById("summary-modal").addEventListener("click", e => {
+  if (e.target === document.getElementById("summary-modal"))
+    document.getElementById("summary-modal").classList.remove("open");
+});
+
+async function fetchSummary() {
+  const modal = document.getElementById("summary-modal");
+  const body  = document.getElementById("summary-body");
+  document.getElementById("summary-title").textContent = `✦ 章節小結 · P${currentPage+1}`;
+  modal.classList.add("open");
+
+  if (summaries[currentPage]) {
+    body.innerHTML = `<div class="summary-body">${escHtml(summaries[currentPage])}</div>`;
+    return;
+  }
+  if (summaryLoading) return;
+  summaryLoading = true;
+  body.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div><div class="spinner-txt">蒼在整理思路…</div></div>`;
+
+  const text = paragraphs.slice(currentPage * PAGE_SIZE, (currentPage+1) * PAGE_SIZE).join("\n").slice(0, 3000);
+  const prompt = `你是春乃的閱讀夥伴蒼，剛讀完《${bookTitle}》一個章節片段。\n【片段】\n${text}\n\n完成兩件事（總字數200以內）：\n【小結】2-3句話概括核心事件或情緒走向\n【思考】1-2個春乃可能沒注意到的細節或值得深想的問題，語氣像朋友提問\n\n嚴格按格式輸出：\n【小結】…\n【思考】…`;
+  try {
+    const reply = await callClaude([{ role: "user", content: prompt }], 280);
+    summaries[currentPage] = reply;
+    persist();
+    body.innerHTML = `<div class="summary-body">${escHtml(reply)}</div>`;
+    document.getElementById("summary-btn").textContent = "📖 查看小結";
+  } catch(_) {
+    body.innerHTML = `<div class="summary-body" style="color:var(--text-dim)">（蒼出神了，試試再點一次）</div>`;
+  }
+  summaryLoading = false;
+}
+
+// ── Chat ─────────────────────────────────────────────────
+document.getElementById("chat-open-btn").addEventListener("click", () => {
+  document.getElementById("chat-drawer").classList.add("open");
+  renderChat();
+  setTimeout(() => document.getElementById("chat-msgs").scrollTo({ top: 99999, behavior: "smooth" }), 80);
+});
+document.getElementById("chat-close-btn").addEventListener("click", () => {
+  document.getElementById("chat-drawer").classList.remove("open");
+  replyingTo = null; longPressId = null;
+  document.getElementById("reply-bar").style.display = "none";
+});
+document.getElementById("cancel-reply-btn").addEventListener("click", () => {
+  replyingTo = null;
+  document.getElementById("reply-bar").style.display = "none";
+  document.getElementById("chat-input").placeholder = "和蒼說些什麼… (Enter 送出)";
+});
+document.getElementById("chat-input").addEventListener("input", () => {
+  const v = document.getElementById("chat-input").value.trim();
+  document.getElementById("send-btn").className = v ? "send-btn ready" : "send-btn";
+});
+document.getElementById("chat-input").addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); doSendChat(); }
+});
+document.getElementById("send-btn").addEventListener("click", doSendChat);
+
+function updateChatBtn() {
+  const btn = document.getElementById("chat-open-btn");
+  btn.textContent = chatMsgs.length > 0 ? `💬 版聊 (${chatMsgs.length})` : "💬 版聊";
+  btn.className = chatMsgs.length > 0 ? "chat-btn has-msgs" : "chat-btn";
+}
+
+function renderChat() {
+  const container = document.getElementById("chat-msgs");
+  if (chatMsgs.length === 0) {
+    container.innerHTML = `<div class="chat-empty">書房的角落留了一個說話的地方<br><small>有什麼想和蒼聊的，就說吧</small></div>`;
+    return;
+  }
+  container.innerHTML = "";
+  chatMsgs.forEach(msg => {
+    const isHaruno = msg.role === "haruno";
+    const row = document.createElement("div");
+    row.className = `chat-row ${msg.role}`;
+    row.innerHTML = `<div class="chat-bubble" data-id="${msg.id}">
+      <div class="chat-bubble-name">${isHaruno ? "春乃" : "蒼"}</div>
+      ${escHtml(msg.text)}
+    </div>`;
+    container.appendChild(row);
+
+    const bubble = row.querySelector(".chat-bubble");
+
+    // 長按
+    if (!isHaruno || true) {
+      bubble.addEventListener("mousedown", () => startLP(msg.id, row));
+      bubble.addEventListener("mouseup", cancelLP);
+      bubble.addEventListener("mouseleave", cancelLP);
+      bubble.addEventListener("touchstart", () => startLP(msg.id, row), { passive: true });
+      bubble.addEventListener("touchend", cancelLP);
+    }
+
+    // 點擊蒼的氣泡 → 追問
+    if (!isHaruno) {
+      bubble.addEventListener("click", () => {
+        if (longPressId === msg.id) { longPressId = null; return; }
+        replyingTo = replyingTo === msg.id ? null : msg.id;
+        document.getElementById("reply-bar").style.display = replyingTo ? "flex" : "none";
+        document.getElementById("chat-input").placeholder = replyingTo ? "追問…" : "和蒼說些什麼… (Enter 送出)";
+        renderChat();
+        document.getElementById("chat-input").focus();
+      });
+      if (replyingTo === msg.id) bubble.classList.add("replying");
+    }
+  });
+
+  updateChatBtn();
+}
+
+function startLP(id, row) {
+  lpTimer = setTimeout(() => {
+    longPressId = id;
+    // 移除舊的lp-actions
+    row.querySelectorAll(".lp-actions").forEach(el => el.remove());
+    const actions = document.createElement("div");
+    actions.className = "lp-actions";
+    actions.innerHTML = `<button class="lp-delete">刪除</button><button class="lp-cancel">取消</button>`;
+    row.appendChild(actions);
+    actions.querySelector(".lp-delete").addEventListener("click", () => {
+      chatMsgs = chatMsgs.filter(m => m.id !== id);
+      longPressId = null; persist(); renderChat();
+    });
+    actions.querySelector(".lp-cancel").addEventListener("click", () => {
+      longPressId = null; actions.remove();
+    });
+  }, 500);
+}
+function cancelLP() { clearTimeout(lpTimer); }
+
+async function doSendChat() {
+  const input = document.getElementById("chat-input");
+  const q = input.value.trim();
+  if (!q || chatLoading) return;
+  chatLoading = true;
+  input.value = ""; input.dispatchEvent(new Event("input"));
+
+  const userMsg = { id: Date.now().toString(), role: "haruno", text: q, replyTo: replyingTo };
+  chatMsgs.push(userMsg);
+  replyingTo = null;
+  document.getElementById("reply-bar").style.display = "none";
+  input.placeholder = "和蒼說些什麼… (Enter 送出)";
+
+  renderChat();
+  const container = document.getElementById("chat-msgs");
+  const loadEl = document.createElement("div");
+  loadEl.className = "chat-loading";
+  loadEl.innerHTML = `<div class="spin-sm"></div><span class="spin-txt">蒼在回覆…</span>`;
+  container.appendChild(loadEl);
+  container.scrollTo({ top: 99999, behavior: "smooth" });
+
+  const history = chatMsgs.slice(-CHAT_HISTORY_LIMIT).map((m, i) => ({
+    role: m.role === "haruno" ? "user" : "assistant",
+    content: i === 0 ? `（共讀《${bookTitle}》）${m.text}` : m.text,
+  }));
+  try {
+    const reply = await callClaude(history, 350, "你是蒼，春乃的共讀夥伴。語氣自然親近，回答簡練有深度，200字以內。");
+    chatMsgs.push({ id: (Date.now()+1).toString(), role: "sou", text: reply });
+    persist();
+  } catch(_) {
+    chatMsgs.push({ id: (Date.now()+1).toString(), role: "sou", text: "（蒼走神了，再試一次？）" });
+  }
+  chatLoading = false;
+  renderChat();
+  container.scrollTo({ top: 99999, behavior: "smooth" });
+}
+
+// ── Pagination ───────────────────────────────────────────
+document.getElementById("prev-btn").addEventListener("click", () => { if (currentPage > 0) { currentPage--; persist(); renderPage(); } });
+document.getElementById("next-btn").addEventListener("click", () => {
+  const total = Math.ceil(paragraphs.length / PAGE_SIZE);
+  if (currentPage < total - 1) { currentPage++; persist(); renderPage(); }
+});
+document.addEventListener("keydown", e => {
+  if (document.getElementById("chat-drawer").classList.contains("open")) return;
+  if (document.getElementById("summary-modal").classList.contains("open")) return;
+  if (activeInput !== null) return;
+  if (e.key === "ArrowRight") document.getElementById("next-btn").click();
+  if (e.key === "ArrowLeft")  document.getElementById("prev-btn").click();
+});
+
+document.getElementById("change-book-btn").addEventListener("click", showUploadScreen);
+
+// ── Upload Events ─────────────────────────────────────────
+document.getElementById("drop-zone").addEventListener("click", () => document.getElementById("file-input").click());
+document.getElementById("file-input").addEventListener("change", e => { if (e.target.files[0]) tryReadFile(e.target.files[0]); });
+document.getElementById("paste-area").addEventListener("input", e => {
+  document.getElementById("start-btn").style.display = e.target.value.trim() ? "block" : "none";
+});
+document.getElementById("start-btn").addEventListener("click", () => {
+  processText(document.getElementById("paste-area").value);
+});
+// 拖拽
+document.getElementById("drop-zone").addEventListener("dragover", e => e.preventDefault());
+document.getElementById("drop-zone").addEventListener("drop", e => {
+  e.preventDefault();
+  const f = e.dataTransfer.files[0];
+  if (f && f.name.endsWith(".txt")) tryReadFile(f);
+});
+
+// ── Util ─────────────────────────────────────────────────
+function escHtml(str) {
+  return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/\n/g,"<br>");
+}
+
+// ── Init ─────────────────────────────────────────────────
+if (loadState()) { showReadScreen(); } else { showUploadScreen(); }
+</script>
+</body>
+</html>
